@@ -2,8 +2,11 @@ name: Update AmneziaWG
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '41 3 * * *'
+    inputs:
+      version:
+        description: Tested amneziawg-linux-kernel-module version
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,7 +19,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Update version and checksum
-        run: ./scripts/update-amneziawg packages/amneziawg-linux-lts-bin/PKGBUILD
+        run: >-
+          ./scripts/update-amneziawg
+          packages/amneziawg-linux-lts-bin/PKGBUILD
+          '${{ inputs.version }}'
 
       - name: Commit update
         run: |

@@ -69,6 +69,8 @@ kernel and its module cannot get out of sync:
 sudo pacman -Syu amneziawg-linux-lts-bin
 ```
 
-The update workflow checks the latest upstream AmneziaWG tag daily. When it
-changes, the workflow updates the pinned version and checksum and commits them
-to `main`; that commit triggers a package build.
+Kernel-module tags are not automatically followed: their version number does
+not reliably identify protocol compatibility with the separately released
+userspace tools. Run the update workflow manually with an explicitly tested
+version. It updates the pinned version and checksum and commits them to `main`;
+that commit triggers a package build.

@@ -2,18 +2,14 @@
 set -euo pipefail
 
 pkgbuild=${1:-packages/amneziawg-linux-lts-bin/PKGBUILD}
-tags_url='https://api.github.com/repos/amnezia-vpn/amneziawg-linux-kernel-module/tags?per_page=100'
+version=${2:?Usage: update-amneziawg PKGBUILD VERSION}
 
-tag=$(curl --fail --silent --show-error --location \
-  -H 'Accept: application/vnd.github+json' "$tags_url" | \
-  jq --raw-output '.[].name' | grep -E '^v[0-9]+(\.[0-9]+)+$' | sort -V | tail -n 1)
-
-if [[ ! $tag =~ ^v([0-9][0-9.]*)$ ]]; then
-  printf 'Unexpected upstream tag: %s\n' "$tag" >&2
+if [[ ! $version =~ ^[0-9]+(\.[0-9]+)+$ ]]; then
+  printf 'Unexpected upstream version: %s\n' "$version" >&2
   exit 1
 fi
 
-version=${BASH_REMATCH[1]}
+tag=v${version}
 archive=$(mktemp)
 trap 'rm -f "$archive"' EXIT
 
