@@ -32,12 +32,41 @@ GitHub Pages. Before running it:
    `ARCHERY_GPG_PRIVATE_KEY` Actions secret.
 
 The public key and its fingerprint are published as `archery.gpg` and
-`archery.fingerprint`. On a client, import and locally sign that key, then add:
+`archery.fingerprint`.
+
+## Client setup
+
+Download the repository key and inspect its fingerprint:
+
+```bash
+curl --fail --silent --show-error --location \
+  https://jfk9w.github.io/archery/archery.gpg \
+  --output /tmp/archery.gpg
+
+gpg --show-keys --with-fingerprint /tmp/archery.gpg
+```
+
+Verify the displayed fingerprint against a trusted copy provided by the
+repository owner. Then import the key into pacman's keyring and locally sign it:
+
+```bash
+sudo pacman-key --add /tmp/archery.gpg
+sudo pacman-key --lsign-key FINGERPRINT
+```
+
+Add the repository before the official repositories in `/etc/pacman.conf`:
 
 ```ini
 [archery]
 SigLevel = Required DatabaseOptional
 Server = https://jfk9w.github.io/archery/$arch
+```
+
+Refresh the databases and install the package in the same transaction, so the
+kernel and its module cannot get out of sync:
+
+```bash
+sudo pacman -Syu amneziawg-linux-lts-bin
 ```
 
 The update workflow checks the latest upstream AmneziaWG tag daily. When it
