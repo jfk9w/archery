@@ -1,0 +1,50 @@
+name: Build packages
+
+on:
+  push:
+    paths:
+      - packages/**
+      - scripts/**
+      - .github/workflows/build.yml
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  amneziawg-linux-lts-bin:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+
+    steps:
+      - name: Install build environment
+        run: pacman -Syu --noconfirm --needed bc git kmod linux-lts-headers
+
+      - uses: actions/checkout@v4
+
+      - name: Select current linux-lts
+        run: ./scripts/prepare-linux-lts packages/amneziawg-linux-lts-bin/PKGBUILD
+
+      - name: Build package
+        run: |
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- bash -lc \
+            "cd '$GITHUB_WORKSPACE/packages/amneziawg-linux-lts-bin' && makepkg --cleanbuild --noconfirm"
+
+      - name: Verify module metadata
+        run: |
+          package=$(find packages/amneziawg-linux-lts-bin -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
+          mkdir /tmp/package
+          bsdtar -xf "$package" -C /tmp/package
+          module=$(find /tmp/package/usr/lib/modules -name 'amneziawg.ko.zst' -print -quit)
+          zstd -dc "$module" > /tmp/amneziawg.ko
+          modinfo /tmp/amneziawg.ko
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: amneziawg-linux-lts-bin
+          path: packages/amneziawg-linux-lts-bin/*.pkg.tar.zst
+          if-no-files-found: error

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pkgbuild=${1:-packages/amneziawg-linux-lts-bin/PKGBUILD}
+kernel_pkgver=$(pacman -Q linux-lts-headers | awk '{ print $2 }')
+kernel_release=$(find /usr/lib/modules -mindepth 1 -maxdepth 1 -type d \
+  -name '*-lts' -printf '%f\n' | sort -V | tail -n 1)
+
+if [[ -z ${kernel_pkgver} || -z ${kernel_release} ]]; then
+  echo 'linux-lts-headers is installed, but its module build directory was not found' >&2
+  exit 1
+fi
+
+sed -i \
+  -e "s/^_kernel_pkgver=.*/_kernel_pkgver=${kernel_pkgver}/" \
+  -e "s/^_kernel_release=.*/_kernel_release=${kernel_release}/" \
+  "${pkgbuild}"
+
+printf 'Building for linux-lts %s (%s)\n' "${kernel_pkgver}" "${kernel_release}"
+

@@ -1,0 +1,45 @@
+# Maintainer: Igor Kulkov <xp.jfk9w@gmail.com>
+
+pkgname=amneziawg-linux-lts-bin
+_upstream_version=1.0.20260329
+_kernel_pkgver=6.18.44-1
+_kernel_release=6.18.44-1-lts
+pkgver="${_upstream_version}.${_kernel_pkgver//-/.}"
+pkgrel=1
+pkgdesc='AmneziaWG kernel module prebuilt for linux-lts'
+arch=('x86_64')
+url='https://github.com/amnezia-vpn/amneziawg-linux-kernel-module'
+license=('GPL-2.0-only')
+depends=("linux-lts=${_kernel_pkgver}")
+makedepends=(
+  'bc'
+  "linux-lts-headers=${_kernel_pkgver}"
+)
+provides=(
+  'AMNEZIAWG-MODULE'
+  'amneziawg-dkms'
+)
+conflicts=(
+  'amneziawg-dkms'
+  'amneziawg-dkms-git'
+  'amneziawg-linux'
+)
+source=("amneziawg-linux-kernel-module-${_upstream_version}.tar.gz::https://github.com/amnezia-vpn/amneziawg-linux-kernel-module/archive/refs/tags/v${_upstream_version}.tar.gz")
+sha256sums=('9bc6779711559a298f7c8ec1f5ca33ea151166f409b748cd761866a05b4bd39f')
+
+build() {
+  make \
+    -C "amneziawg-linux-kernel-module-${_upstream_version}/src" \
+    KERNELRELEASE="${_kernel_release}" \
+    KERNELDIR="/usr/lib/modules/${_kernel_release}/build"
+}
+
+package() {
+  local module="amneziawg-linux-kernel-module-${_upstream_version}/src/amneziawg.ko"
+  local destination="${pkgdir}/usr/lib/modules/${_kernel_release}/updates/archery"
+
+  install -Dm644 "${module}" "${destination}/amneziawg.ko"
+  zstd --force --rm -19 "${destination}/amneziawg.ko"
+  install -Dm644 "amneziawg-linux-kernel-module-${_upstream_version}/COPYING" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
+}
