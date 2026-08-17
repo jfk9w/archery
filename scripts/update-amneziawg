@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pkgbuild=${1:-packages/amneziawg-linux-lts-bin/PKGBUILD}
+tags_url='https://api.github.com/repos/amnezia-vpn/amneziawg-linux-kernel-module/tags?per_page=100'
+
+tag=$(curl --fail --silent --show-error --location \
+  -H 'Accept: application/vnd.github+json' "$tags_url" | \
+  jq --raw-output '.[].name' | grep -E '^v[0-9]+(\.[0-9]+)+$' | sort -V | tail -n 1)
+
+if [[ ! $tag =~ ^v([0-9][0-9.]*)$ ]]; then
+  printf 'Unexpected upstream tag: %s\n' "$tag" >&2
+  exit 1
+fi
+
+version=${BASH_REMATCH[1]}
+archive=$(mktemp)
+trap 'rm -f "$archive"' EXIT
+
+curl --fail --silent --show-error --location \
+  "https://github.com/amnezia-vpn/amneziawg-linux-kernel-module/archive/refs/tags/${tag}.tar.gz" \
+  --output "$archive"
+checksum=$(sha256sum "$archive" | awk '{ print $1 }')
+
+sed -i \
+  -e "s/^_upstream_version=.*/_upstream_version=${version}/" \
+  -e "s/^sha256sums=.*/sha256sums=('${checksum}')/" \
+  "$pkgbuild"
+
+printf 'Selected AmneziaWG %s (%s)\n' "$version" "$checksum"

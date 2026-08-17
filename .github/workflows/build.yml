@@ -1,4 +1,4 @@
-name: Build packages
+name: Build and publish packages
 
 on:
   push:
@@ -12,6 +12,12 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   amneziawg-linux-lts-bin:
@@ -20,7 +26,7 @@ jobs:
 
     steps:
       - name: Install build environment
-        run: pacman -Syu --noconfirm --needed bc git kmod linux-lts-headers
+        run: pacman -Syu --noconfirm --needed bc git gnupg kmod linux-lts-headers
 
       - uses: actions/checkout@v4
 
@@ -48,3 +54,54 @@ jobs:
           name: amneziawg-linux-lts-bin
           path: packages/amneziawg-linux-lts-bin/*.pkg.tar.zst
           if-no-files-found: error
+
+      - name: Import repository signing key
+        env:
+          ARCHERY_GPG_PRIVATE_KEY: ${{ secrets.ARCHERY_GPG_PRIVATE_KEY }}
+        run: |
+          test -n "$ARCHERY_GPG_PRIVATE_KEY"
+          printf '%s' "$ARCHERY_GPG_PRIVATE_KEY" | base64 --decode | gpg --batch --import
+
+      - name: Assemble signed repository
+        run: |
+          install -d public/x86_64
+          cp packages/amneziawg-linux-lts-bin/*.pkg.tar.zst public/x86_64/
+
+          fingerprint=$(gpg --batch --with-colons --list-secret-keys | \
+            awk -F: '$1 == "fpr" { print $10; exit }')
+          test -n "$fingerprint"
+
+          cd public/x86_64
+          for package in *.pkg.tar.zst; do
+            gpg --batch --yes --local-user "$fingerprint" --detach-sign "$package"
+          done
+          repo-add --sign --key "$fingerprint" archery.db.tar.zst ./*.pkg.tar.zst
+
+          # GitHub Pages artifacts cannot contain symbolic links. repo-add creates
+          # archery.db and archery.files as symlinks, so publish regular copies.
+          while IFS= read -r link; do
+            cp --dereference "$link" "${link}.regular"
+            rm "$link"
+            mv "${link}.regular" "$link"
+          done < <(find . -maxdepth 1 -type l -print)
+
+          gpg --batch --armor --export "$fingerprint" > ../archery.gpg
+          printf '%s\n' "$fingerprint" > ../archery.fingerprint
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+  deploy:
+    needs: amneziawg-linux-lts-bin
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy repository to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
