@@ -61,7 +61,7 @@ jobs:
 
     steps:
       - name: Install build environment
-        run: pacman -Syu --noconfirm --needed git go
+        run: pacman -Syu --noconfirm --needed git go mailcap
 
       - uses: actions/checkout@v4
         with:
