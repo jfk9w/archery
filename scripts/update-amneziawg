@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-pkgbuild=${1:-packages/amneziawg-linux-lts-bin/PKGBUILD}
+pkgbuild=${1:-packages/amneziawg-linux-lts/PKGBUILD}
 version=${2:?Usage: update-amneziawg PKGBUILD VERSION}
 
 if [[ ! $version =~ ^[0-9]+(\.[0-9]+)+$ ]]; then

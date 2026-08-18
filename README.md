@@ -4,7 +4,7 @@ Personal Arch Linux package repository.
 
 ## Packages
 
-- `amneziawg-linux-lts-bin` — AmneziaWG kernel module prebuilt for the exact
+- `amneziawg-linux-lts` — AmneziaWG kernel module prebuilt for the exact
   `linux-lts` package version used during the build.
 
 ## Local build
@@ -12,8 +12,8 @@ Personal Arch Linux package repository.
 Install `base-devel` and the current `linux-lts-headers`, then run:
 
 ```bash
-./scripts/prepare-linux-lts packages/amneziawg-linux-lts-bin/PKGBUILD
-cd packages/amneziawg-linux-lts-bin
+./scripts/prepare-linux-lts packages/amneziawg-linux-lts/PKGBUILD
+cd packages/amneziawg-linux-lts
 makepkg --syncdeps --cleanbuild
 ```
 
@@ -66,7 +66,7 @@ Refresh the databases and install the package in the same transaction, so the
 kernel and its module cannot get out of sync:
 
 ```bash
-sudo pacman -Syu amneziawg-linux-lts-bin
+sudo pacman -Syu amneziawg-linux-lts
 ```
 
 Kernel-module tags are not automatically followed: their version number does

@@ -1,6 +1,6 @@
 # Maintainer: Igor Kulkov <arch.i@sonc.top>
 
-pkgname=amneziawg-linux-lts-bin
+pkgname=amneziawg-linux-lts
 _upstream_version=1.0.20260329
 _kernel_pkgver=6.18.44-1
 _kernel_release=6.18.44-1-lts
@@ -16,14 +16,17 @@ makedepends=(
   "linux-lts-headers=${_kernel_pkgver}"
 )
 provides=(
+  "amneziawg-linux-lts-bin=${pkgver}"
   'AMNEZIAWG-MODULE'
   'amneziawg-dkms'
 )
 conflicts=(
+  'amneziawg-linux-lts-bin'
   'amneziawg-dkms'
   'amneziawg-dkms-git'
   'amneziawg-linux'
 )
+replaces=('amneziawg-linux-lts-bin')
 source=("amneziawg-linux-kernel-module-${_upstream_version}.tar.gz::https://github.com/amnezia-vpn/amneziawg-linux-kernel-module/archive/refs/tags/v${_upstream_version}.tar.gz")
 sha256sums=('9bc6779711559a298f7c8ec1f5ca33ea151166f409b748cd761866a05b4bd39f')
 

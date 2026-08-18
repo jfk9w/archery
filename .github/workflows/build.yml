@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  amneziawg-linux-lts-bin:
+  amneziawg-linux-lts:
     runs-on: ubuntu-latest
     container: archlinux:base-devel
 
@@ -31,18 +31,18 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Select current linux-lts
-        run: ./scripts/prepare-linux-lts packages/amneziawg-linux-lts-bin/PKGBUILD
+        run: ./scripts/prepare-linux-lts packages/amneziawg-linux-lts/PKGBUILD
 
       - name: Build package
         run: |
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
           runuser -u builder -- bash -lc \
-            "cd '$GITHUB_WORKSPACE/packages/amneziawg-linux-lts-bin' && makepkg --cleanbuild --noconfirm"
+            "cd '$GITHUB_WORKSPACE/packages/amneziawg-linux-lts' && makepkg --cleanbuild --noconfirm"
 
       - name: Verify module metadata
         run: |
-          package=$(find packages/amneziawg-linux-lts-bin -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
+          package=$(find packages/amneziawg-linux-lts -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
           mkdir /tmp/package
           bsdtar -xf "$package" -C /tmp/package
           module=$(find /tmp/package/usr/lib/modules -name 'amneziawg.ko.zst' -print -quit)
@@ -51,8 +51,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: amneziawg-linux-lts-bin
-          path: packages/amneziawg-linux-lts-bin/*.pkg.tar.zst
+          name: amneziawg-linux-lts
+          path: packages/amneziawg-linux-lts/*.pkg.tar.zst
           if-no-files-found: error
 
       - name: Import repository signing key
@@ -65,7 +65,7 @@ jobs:
       - name: Assemble signed repository
         run: |
           install -d public/x86_64
-          cp packages/amneziawg-linux-lts-bin/*.pkg.tar.zst public/x86_64/
+          cp packages/amneziawg-linux-lts/*.pkg.tar.zst public/x86_64/
 
           fingerprint=$(gpg --batch --with-colons --list-secret-keys | \
             awk -F: '$1 == "fpr" { print $10; exit }')
@@ -95,7 +95,7 @@ jobs:
           path: public
 
   deploy:
-    needs: amneziawg-linux-lts-bin
+    needs: amneziawg-linux-lts
     runs-on: ubuntu-latest
     environment:
       name: github-pages
