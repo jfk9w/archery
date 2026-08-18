@@ -11,6 +11,7 @@ pkgdesc='Fast and extensible HTTP server with custom DNS and layer4 modules'
 arch=('x86_64')
 url='https://caddyserver.com/'
 license=('Apache-2.0')
+depends=('mailcap')
 makedepends=('git' 'go')
 backup=('etc/caddy/Caddyfile')
 source=(
@@ -49,10 +50,18 @@ build() {
     --with github.com/mholt/caddy-l4@v0.1.2 \
     --with github.com/caddyserver/replace-response@80962887e4c6 \
     --output "${srcdir}/caddy"
+
+  for shell in bash fish zsh; do
+    "${srcdir}/caddy" completion "$shell" >"${srcdir}/caddy.${shell}"
+  done
 }
 
 check() {
-  "${srcdir}/caddy" version
+  local version
+  version=$("${srcdir}/caddy" version)
+  printf 'Caddy version: %s\n' "$version"
+  [[ $version == "v${_caddy_version}" || $version == "v${_caddy_version} "* ]]
+
   "${srcdir}/caddy" list-modules --packages | awk '{ print $NF }' | grep -Fx github.com/caddy-dns/porkbun
   "${srcdir}/caddy" list-modules --packages | awk '{ print $NF }' | grep -Fx github.com/jfk9w-go/caddy-dns-selectel
   "${srcdir}/caddy" list-modules --packages | awk '{ print $NF }' | grep -Fx github.com/mholt/caddy-l4
@@ -68,6 +77,12 @@ package() {
   install -Dm644 caddy.sysusers "${pkgdir}/usr/lib/sysusers.d/caddy.conf"
   install -Dm644 Caddyfile "${pkgdir}/etc/caddy/Caddyfile"
   install -dm755 "${pkgdir}/etc/caddy/conf.d"
+  install -Dm644 "${srcdir}/caddy.bash" \
+    "${pkgdir}/usr/share/bash-completion/completions/caddy"
+  install -Dm644 "${srcdir}/caddy.fish" \
+    "${pkgdir}/usr/share/fish/vendor_completions.d/caddy.fish"
+  install -Dm644 "${srcdir}/caddy.zsh" \
+    "${pkgdir}/usr/share/zsh/site-functions/_caddy"
   install -Dm755 "${srcdir}/caddy" "${pkgdir}/usr/bin/caddy"
   install -Dm644 "caddy-${_caddy_version}/LICENSE" \
     "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
