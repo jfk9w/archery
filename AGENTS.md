@@ -40,6 +40,9 @@ with unattended GitHub Actions builds.
 - Manual Caddy or plugin edits build immediately with the `_caddy_version`
   recorded in `PKGBUILD`; they do not bypass or modify the scheduled updater's
   release policy.
+- Keep the packaged systemd units, sysusers/tmpfiles definitions, default
+  Caddyfile and version-matched welcome page aligned with the official Arch
+  package unless the custom build requires a documented divergence.
 
 ## Publishing
 

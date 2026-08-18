@@ -1,0 +1,14 @@
+# The Caddyfile is an easy way to configure your Caddy web server.
+#
+# https://caddyserver.com/docs/caddyfile
+
+{
+	admin "unix//run/caddy/admin.socket"
+}
+
+http:// {
+	root * /usr/share/caddy
+	file_server
+}
+
+import /etc/caddy/conf.d/*

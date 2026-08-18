@@ -56,15 +56,21 @@ if (( now < eligible_epoch )); then
 fi
 
 archive=$(mktemp)
-trap 'rm -f "$archive"' EXIT
+dist_archive=$(mktemp)
+trap 'rm -f "$archive" "$dist_archive"' EXIT
 curl --fail --silent --show-error --location \
   "https://github.com/${repository}/archive/refs/tags/v${latest_version}.tar.gz" \
   --output "$archive"
 checksum=$(sha256sum "$archive" | awk '{ print $1 }')
+curl --fail --silent --show-error --location \
+  "https://github.com/caddyserver/dist/archive/refs/tags/v${latest_version}.tar.gz" \
+  --output "$dist_archive"
+dist_checksum=$(sha256sum "$dist_archive" | awk '{ print $1 }')
 
 sed -i \
   -e "s/^_caddy_version=.*/_caddy_version=${latest_version}/" \
-  -e "s/^sha256sums=(.*/sha256sums=('${checksum}')/" \
+  -e "s/^_caddy_checksum=.*/_caddy_checksum=${checksum}/" \
+  -e "s/^_dist_checksum=.*/_dist_checksum=${dist_checksum}/" \
   "$pkgbuild"
 
 if [[ -n ${GITHUB_OUTPUT:-} ]]; then

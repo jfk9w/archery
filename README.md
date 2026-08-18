@@ -32,8 +32,11 @@ A custom, statically linked Caddy binary built with `xcaddy`. It includes:
 
 The package has the same name as the official Arch package and the `archery`
 repository is placed before the official repositories, so this build takes
-precedence. It installs the Caddy binary and license; host configuration and
-service units are managed separately.
+precedence. Like the official package, it creates the `caddy` system user and
+runtime/data directories, installs Caddyfile and API systemd units, provides a
+default `/etc/caddy/Caddyfile` and serves a welcome page from
+`/usr/share/caddy`. The default Caddyfile is tracked as a pacman backup file, so
+local configuration is preserved across package upgrades.
 
 Its version has the form `<caddy-version>.<package-change-timestamp>-1`. The UTC
 timestamp comes from the latest commit that changed `packages/caddy` or its

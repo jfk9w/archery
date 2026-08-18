@@ -3,6 +3,8 @@
 pkgname=caddy
 _caddy_version=2.11.4
 _build_timestamp=20260818193906
+_caddy_checksum=2c3d02078286a6282cdb4d1d8744077788d556659dac0b64d8ed5886a7e5aeb9
+_dist_checksum=be6a69751f8b16f1b0f05016fc12bd6ff374c3451941d109823ff87e115bcdf1
 pkgver="${_caddy_version}.${_build_timestamp}"
 pkgrel=1
 pkgdesc='Fast and extensible HTTP server with custom DNS and layer4 modules'
@@ -10,8 +12,30 @@ arch=('x86_64')
 url='https://caddyserver.com/'
 license=('Apache-2.0')
 makedepends=('git' 'go')
-source=("caddy-${_caddy_version}.tar.gz::https://github.com/caddyserver/caddy/archive/refs/tags/v${_caddy_version}.tar.gz")
-sha256sums=('2c3d02078286a6282cdb4d1d8744077788d556659dac0b64d8ed5886a7e5aeb9')
+backup=('etc/caddy/Caddyfile')
+source=(
+  "caddy-${_caddy_version}.tar.gz::https://github.com/caddyserver/caddy/archive/refs/tags/v${_caddy_version}.tar.gz"
+  "caddy-dist-${_caddy_version}.tar.gz::https://github.com/caddyserver/dist/archive/refs/tags/v${_caddy_version}.tar.gz"
+  'caddy.service'
+  'caddy-api.service'
+  'caddy.sysusers'
+  'caddy.tmpfiles'
+  'Caddyfile'
+)
+sha256sums=(
+  "${_caddy_checksum}"
+  "${_dist_checksum}"
+  '6509e1fce2aae0c5225ed1212c9c65d335c799add21db91cfdfc41c845d00848'
+  '6ff90a8e30217b93513ae990706a6625fb0f0ecc09cf3f1aca44f4da4e2e8e2b'
+  '02b16b9523f85c37292ac1f54ccb6038c414a2693ae3fb7031d7de5fbee97a55'
+  '654720ba129d7506676df0923737df513c2a438e6141dafbac66c61e4c1c04a0'
+  '7f7de880d014938d78dcb7bb5848dcc12f047de47bf4bc503323ff5774f40164'
+)
+
+prepare() {
+  sed 's|/var/www/html|/srv/http|g' -i \
+    "dist-${_caddy_version}/welcome/index.html"
+}
 
 build() {
   export CGO_ENABLED=0
@@ -36,6 +60,14 @@ check() {
 }
 
 package() {
+  install -Dm644 "dist-${_caddy_version}/welcome/index.html" \
+    "${pkgdir}/usr/share/caddy/index.html"
+  install -Dm644 caddy.service caddy-api.service \
+    -t "${pkgdir}/usr/lib/systemd/system"
+  install -Dm644 caddy.tmpfiles "${pkgdir}/usr/lib/tmpfiles.d/caddy.conf"
+  install -Dm644 caddy.sysusers "${pkgdir}/usr/lib/sysusers.d/caddy.conf"
+  install -Dm644 Caddyfile "${pkgdir}/etc/caddy/Caddyfile"
+  install -dm755 "${pkgdir}/etc/caddy/conf.d"
   install -Dm755 "${srcdir}/caddy" "${pkgdir}/usr/bin/caddy"
   install -Dm644 "caddy-${_caddy_version}/LICENSE" \
     "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
