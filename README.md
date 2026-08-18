@@ -33,6 +33,13 @@ makepkg --syncdeps --cleanbuild
 Consequently, pacman will refuse to upgrade `linux-lts` until a matching module
 package is available.
 
+The scheduled Caddy update workflow follows the latest non-prerelease GitHub
+release automatically. Patch updates are committed directly to `main` seven
+days after publication, and minor updates after fourteen days. Major updates
+open a pull request after thirty days and require a manual merge. Direct commits
+dispatch the normal package build and publication workflow; merging a major
+update pull request triggers it through the push to `main`.
+
 ## Publishing
 
 The build workflow creates a signed pacman repository and deploys it through

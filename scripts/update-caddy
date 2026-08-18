@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pkgbuild=${1:-packages/caddy/PKGBUILD}
+repository=${CADDY_REPOSITORY:-caddyserver/caddy}
+now=${CADDY_UPDATE_NOW:-$(date --utc +%s)}
+
+if [[ -n ${GITHUB_OUTPUT:-} ]]; then
+  printf 'updated=false\n' >>"$GITHUB_OUTPUT"
+fi
+
+current_version=$(sed -n 's/^_caddy_version=//p' "$pkgbuild")
+if [[ -z $current_version ]]; then
+  printf 'Could not read _caddy_version from %s\n' "$pkgbuild" >&2
+  exit 1
+fi
+
+release=$(curl --fail --silent --show-error --location \
+  -H 'Accept: application/vnd.github+json' \
+  -H 'X-GitHub-Api-Version: 2022-11-28' \
+  "https://api.github.com/repos/${repository}/releases/latest")
+latest_version=$(jq -r '.tag_name | sub("^v"; "")' <<<"$release")
+published_at=$(jq -r '.published_at' <<<"$release")
+
+if [[ $latest_version == "$current_version" ]]; then
+  printf 'Caddy %s is already current\n' "$current_version"
+  exit 0
+fi
+
+if ! printf '%s\n%s\n' "$current_version" "$latest_version" | sort -V -C; then
+  printf 'Latest Caddy release %s is not newer than packaged %s\n' \
+    "$latest_version" "$current_version"
+  exit 0
+fi
+
+IFS=. read -r current_major current_minor _ <<<"$current_version"
+IFS=. read -r latest_major latest_minor _ <<<"$latest_version"
+if [[ $current_major != "$latest_major" ]]; then
+  delay_days=30
+  update_kind=major
+elif [[ $current_minor != "$latest_minor" ]]; then
+  delay_days=14
+  update_kind=minor
+else
+  delay_days=7
+  update_kind=patch
+fi
+
+published_epoch=$(date --utc --date="$published_at" +%s)
+eligible_epoch=$((published_epoch + delay_days * 86400))
+if (( now < eligible_epoch )); then
+  printf 'Caddy %s is a %s update; eligible after %s (%d-day delay)\n' \
+    "$latest_version" "$update_kind" \
+    "$(date --utc --date="@${eligible_epoch}" --iso-8601=seconds)" "$delay_days"
+  exit 0
+fi
+
+archive=$(mktemp)
+trap 'rm -f "$archive"' EXIT
+curl --fail --silent --show-error --location \
+  "https://github.com/${repository}/archive/refs/tags/v${latest_version}.tar.gz" \
+  --output "$archive"
+checksum=$(sha256sum "$archive" | awk '{ print $1 }')
+
+sed -i \
+  -e "s/^_caddy_version=.*/_caddy_version=${latest_version}/" \
+  -e "s/^sha256sums=(.*/sha256sums=('${checksum}')/" \
+  "$pkgbuild"
+
+if [[ -n ${GITHUB_OUTPUT:-} ]]; then
+  {
+    printf 'updated=true\n'
+    printf 'version=%s\n' "$latest_version"
+    printf 'kind=%s\n' "$update_kind"
+  } >>"$GITHUB_OUTPUT"
+fi
+
+printf 'Updated Caddy %s -> %s after %d-day %s delay\n' \
+  "$current_version" "$latest_version" "$delay_days" "$update_kind"
