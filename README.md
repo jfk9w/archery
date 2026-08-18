@@ -8,6 +8,8 @@ Personal Arch Linux package repository.
   `linux-lts` package version used during the build.
 - `caddy` — Caddy with Porkbun DNS, Selectel DNS, layer4 and response replacement
   modules. It intentionally takes precedence over the official Arch package.
+  Its package version combines the upstream version with the UTC timestamp of
+  the latest commit that changed `packages/caddy`.
 
 ## Local build
 
@@ -16,6 +18,14 @@ Install `base-devel` and the current `linux-lts-headers`, then run:
 ```bash
 ./scripts/prepare-linux-lts packages/amneziawg-linux-lts/PKGBUILD
 cd packages/amneziawg-linux-lts
+makepkg --syncdeps --cleanbuild
+```
+
+For Caddy:
+
+```bash
+./scripts/prepare-caddy packages/caddy/PKGBUILD
+cd packages/caddy
 makepkg --syncdeps --cleanbuild
 ```
 

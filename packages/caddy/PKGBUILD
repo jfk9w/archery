@@ -1,14 +1,16 @@
 # Maintainer: Igor Kulkov <arch.i@sonc.top>
 
 pkgname=caddy
-pkgver=2.11.4
-pkgrel=1.1
+_caddy_version=2.11.4
+_build_timestamp=20260818193906
+pkgver="${_caddy_version}.${_build_timestamp}"
+pkgrel=1
 pkgdesc='Fast and extensible HTTP server with custom DNS and layer4 modules'
 arch=('x86_64')
 url='https://caddyserver.com/'
 license=('Apache-2.0')
 makedepends=('git' 'go')
-source=("caddy-${pkgver}.tar.gz::https://github.com/caddyserver/caddy/archive/refs/tags/v${pkgver}.tar.gz")
+source=("caddy-${_caddy_version}.tar.gz::https://github.com/caddyserver/caddy/archive/refs/tags/v${_caddy_version}.tar.gz")
 sha256sums=('2c3d02078286a6282cdb4d1d8744077788d556659dac0b64d8ed5886a7e5aeb9')
 
 build() {
@@ -17,7 +19,7 @@ build() {
   export GOFLAGS='-buildvcs=false -trimpath'
 
   go install github.com/caddyserver/xcaddy/cmd/xcaddy@v0.4.5
-  "${GOBIN}/xcaddy" build "v${pkgver}" \
+  "${GOBIN}/xcaddy" build "v${_caddy_version}" \
     --with github.com/caddy-dns/porkbun@v0.3.1 \
     --with github.com/jfk9w-go/caddy-dns-selectel@fab446026ca90f042ac7e8c9c17105883faf1b2e \
     --with github.com/mholt/caddy-l4@v0.1.2 \
@@ -35,6 +37,6 @@ check() {
 
 package() {
   install -Dm755 "${srcdir}/caddy" "${pkgdir}/usr/bin/caddy"
-  install -Dm644 "caddy-${pkgver}/LICENSE" \
+  install -Dm644 "caddy-${_caddy_version}/LICENSE" \
     "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }

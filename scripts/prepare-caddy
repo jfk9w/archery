@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pkgbuild=${1:-packages/caddy/PKGBUILD}
+repository=$(git -C "$(dirname "$pkgbuild")" rev-parse --show-toplevel)
+package_directory=$(realpath --relative-to="$repository" "$(dirname "$pkgbuild")")
+commit_time=$(git -C "$repository" log -1 --format=%ct -- \
+  "$package_directory" scripts/prepare-caddy)
+
+if [[ -z $commit_time ]]; then
+  printf 'No commit found for %s\n' "$package_directory" >&2
+  exit 1
+fi
+
+build_timestamp=$(date --utc --date="@${commit_time}" +%Y%m%d%H%M%S)
+sed -i \
+  "s/^_build_timestamp=.*/_build_timestamp=${build_timestamp}/" \
+  "$pkgbuild"
+
+printf 'Selected Caddy package timestamp %s\n' "$build_timestamp"

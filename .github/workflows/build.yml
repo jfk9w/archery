@@ -64,6 +64,11 @@ jobs:
         run: pacman -Syu --noconfirm --needed git go
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select package timestamp
+        run: ./scripts/prepare-caddy packages/caddy/PKGBUILD
 
       - name: Build package
         run: |
