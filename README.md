@@ -6,6 +6,8 @@ Personal Arch Linux package repository.
 
 - `amneziawg-linux-lts` — AmneziaWG kernel module prebuilt for the exact
   `linux-lts` package version used during the build.
+- `caddy` — Caddy with Porkbun DNS, Selectel DNS, layer4 and response replacement
+  modules. It intentionally takes precedence over the official Arch package.
 
 ## Local build
 

@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Install build environment
-        run: pacman -Syu --noconfirm --needed bc git gnupg kmod linux-lts linux-lts-headers
+        run: pacman -Syu --noconfirm --needed bc git kmod linux-lts linux-lts-headers
 
       - uses: actions/checkout@v4
 
@@ -55,6 +55,44 @@ jobs:
           path: packages/amneziawg-linux-lts/*.pkg.tar.zst
           if-no-files-found: error
 
+  caddy:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+
+    steps:
+      - name: Install build environment
+        run: pacman -Syu --noconfirm --needed git go
+
+      - uses: actions/checkout@v4
+
+      - name: Build package
+        run: |
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- bash -lc \
+            "cd '$GITHUB_WORKSPACE/packages/caddy' && makepkg --cleanbuild --noconfirm"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: caddy
+          path: packages/caddy/*.pkg.tar.zst
+          if-no-files-found: error
+
+  repository:
+    needs: [amneziawg-linux-lts, caddy]
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+
+    steps:
+      - name: Install repository tools
+        run: pacman -Syu --noconfirm --needed gnupg
+
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: '*'
+          path: packages
+          merge-multiple: true
+
       - name: Import repository signing key
         env:
           ARCHERY_GPG_PRIVATE_KEY: ${{ secrets.ARCHERY_GPG_PRIVATE_KEY }}
@@ -65,7 +103,7 @@ jobs:
       - name: Assemble signed repository
         run: |
           install -d public/x86_64
-          cp packages/amneziawg-linux-lts/*.pkg.tar.zst public/x86_64/
+          cp packages/*.pkg.tar.zst public/x86_64/
 
           fingerprint=$(gpg --batch --with-colons --list-secret-keys | \
             awk -F: '$1 == "fpr" { print $10; exit }')
@@ -95,7 +133,7 @@ jobs:
           path: public
 
   deploy:
-    needs: amneziawg-linux-lts
+    needs: repository
     runs-on: ubuntu-latest
     environment:
       name: github-pages

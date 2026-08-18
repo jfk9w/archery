@@ -1,0 +1,40 @@
+# Maintainer: Igor Kulkov <arch.i@sonc.top>
+
+pkgname=caddy
+pkgver=2.11.4
+pkgrel=1.1
+pkgdesc='Fast and extensible HTTP server with custom DNS and layer4 modules'
+arch=('x86_64')
+url='https://caddyserver.com/'
+license=('Apache-2.0')
+makedepends=('git' 'go')
+source=("caddy-${pkgver}.tar.gz::https://github.com/caddyserver/caddy/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('2c3d02078286a6282cdb4d1d8744077788d556659dac0b64d8ed5886a7e5aeb9')
+
+build() {
+  export CGO_ENABLED=0
+  export GOBIN="${srcdir}/bin"
+  export GOFLAGS='-buildvcs=false -trimpath'
+
+  go install github.com/caddyserver/xcaddy/cmd/xcaddy@v0.4.5
+  "${GOBIN}/xcaddy" build "v${pkgver}" \
+    --with github.com/caddy-dns/porkbun@v0.3.1 \
+    --with github.com/jfk9w-go/caddy-dns-selectel@fab446026ca90f042ac7e8c9c17105883faf1b2e \
+    --with github.com/mholt/caddy-l4@v0.1.2 \
+    --with github.com/caddyserver/replace-response@80962887e4c6 \
+    --output "${srcdir}/caddy"
+}
+
+check() {
+  "${srcdir}/caddy" version
+  "${srcdir}/caddy" list-modules --packages | awk '{ print $NF }' | grep -Fx github.com/caddy-dns/porkbun
+  "${srcdir}/caddy" list-modules --packages | awk '{ print $NF }' | grep -Fx github.com/jfk9w-go/caddy-dns-selectel
+  "${srcdir}/caddy" list-modules --packages | awk '{ print $NF }' | grep -Fx github.com/mholt/caddy-l4
+  "${srcdir}/caddy" list-modules --packages | awk '{ print $NF }' | grep -Fx github.com/caddyserver/replace-response
+}
+
+package() {
+  install -Dm755 "${srcdir}/caddy" "${pkgdir}/usr/bin/caddy"
+  install -Dm644 "caddy-${pkgver}/LICENSE" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
