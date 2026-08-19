@@ -15,7 +15,7 @@ Type=notify
 User=caddy
 Group=caddy
 Environment=XDG_DATA_HOME=/var/lib
-Environment=XDG_CONFIG_HOME=/etc
+Environment=XDG_CONFIG_HOME=/var/lib
 ExecStartPre=/usr/bin/caddy validate --config /etc/caddy/Caddyfile
 ExecStart=/usr/bin/caddy run --config /etc/caddy/Caddyfile
 ExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile --force

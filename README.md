@@ -38,7 +38,9 @@ default `/etc/caddy/Caddyfile` and serves a welcome page from
 `/usr/share/caddy`. The default Caddyfile is tracked as a pacman backup file, so
 local configuration is preserved across package upgrades. Shell completions are
 installed for bash, fish and zsh. The `mailcap` dependency supplies the system
-MIME type database used by Caddy's file server.
+MIME type database used by Caddy's file server. Runtime state, including ACME
+accounts, certificates and the autosaved configuration, is stored below
+`/var/lib/caddy`.
 
 Its version has the form `<caddy-version>.<package-change-timestamp>-1`. The UTC
 timestamp comes from the latest commit that changed `packages/caddy` or its
