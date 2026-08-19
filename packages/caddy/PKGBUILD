@@ -77,7 +77,6 @@ package() {
   install -Dm644 caddy.tmpfiles "${pkgdir}/usr/lib/tmpfiles.d/caddy.conf"
   install -Dm644 caddy.sysusers "${pkgdir}/usr/lib/sysusers.d/caddy.conf"
   install -Dm644 Caddyfile "${pkgdir}/etc/caddy/Caddyfile"
-  install -dm755 "${pkgdir}/etc/caddy/conf.d"
   install -Dm644 "${srcdir}/caddy.bash" \
     "${pkgdir}/usr/share/bash-completion/completions/caddy"
   install -Dm644 "${srcdir}/caddy.fish" \
