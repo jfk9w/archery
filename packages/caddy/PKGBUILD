@@ -13,6 +13,7 @@ url='https://caddyserver.com/'
 license=('Apache-2.0')
 depends=('mailcap')
 makedepends=('git' 'go')
+options=('!debug')
 backup=('etc/caddy/Caddyfile')
 source=(
   "caddy-${_caddy_version}.tar.gz::https://github.com/caddyserver/caddy/archive/refs/tags/v${_caddy_version}.tar.gz"
