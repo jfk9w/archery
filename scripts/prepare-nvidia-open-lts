@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pkgbuild=${1:-packages/nvidia-open-lts/PKGBUILD}
+nvidia_version=$(find /usr/src -mindepth 2 -maxdepth 2 -type f \
+  -path '/usr/src/nvidia-*/dkms.conf' -printf '%h\n' | \
+  sed 's|.*/nvidia-||' | sort -V | tail -n 1)
+kernel_pkgver=$(pacman -Q linux-lts-headers | awk '{ print $2 }')
+kernel_release=$(</usr/src/linux-lts/version)
+
+if [[ -z ${nvidia_version} || -z ${kernel_pkgver} || -z ${kernel_release} ]]; then
+  echo 'nvidia-open-dkms and linux-lts-headers are installed, but their versions could not be selected' >&2
+  exit 1
+fi
+
+sed -i \
+  -e "s/^_nvidia_version=.*/_nvidia_version=${nvidia_version}/" \
+  -e "s/^_kernel_pkgver=.*/_kernel_pkgver=${kernel_pkgver}/" \
+  -e "s/^_kernel_release=.*/_kernel_release=${kernel_release}/" \
+  "${pkgbuild}"
+
+printf 'Building NVIDIA %s for linux-lts %s (%s)\n' \
+  "${nvidia_version}" "${kernel_pkgver}" "${kernel_release}"

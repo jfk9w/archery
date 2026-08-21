@@ -21,6 +21,19 @@ userspace commands and configuration helpers.
 Its version has the form `<module-version>.<kernel-package-version>-1`, for
 example `1.0.20260329.6.18.44.1-1`.
 
+### `nvidia-open-lts`
+
+NVIDIA's open kernel modules prebuilt for the exact `linux-lts` version used by
+the build, following the official Arch package's DKMS-based build and module
+layout. The package depends on that exact `linux-lts` version and the matching
+`nvidia-utils` release, provides `NVIDIA-MODULE`, and conflicts with the legacy
+proprietary `nvidia-lts` package.
+
+Unlike the official package, its version explicitly includes the kernel package
+version: `<driver-version>.<kernel-package-version>-1`, for example
+`1:610.57.04.6.18.44.1-1`. Thus a new `linux-lts` release is always a package
+upgrade even when the NVIDIA driver version is unchanged.
+
 ### `caddy`
 
 A custom, statically linked Caddy binary built with `xcaddy`. It includes:
@@ -65,9 +78,23 @@ cd packages/caddy
 makepkg --syncdeps --cleanbuild
 ```
 
+For NVIDIA open kernel modules, install the current `nvidia-open-dkms`,
+`nvidia-utils`, `linux-lts` and `linux-lts-headers`, then run:
+
+```bash
+./scripts/prepare-nvidia-open-lts packages/nvidia-open-lts/PKGBUILD
+cd packages/nvidia-open-lts
+makepkg --syncdeps --cleanbuild
+```
+
 `prepare-linux-lts` pins both the pacman package version and the kernel release.
 Consequently, pacman will refuse to upgrade `linux-lts` until a matching module
 package is available.
+
+`prepare-nvidia-open-lts` additionally selects the installed
+`nvidia-open-dkms` version. The scheduled build therefore follows both official
+Arch packages while retaining an explicit kernel version in the resulting
+package version and dependency.
 
 The scheduled Caddy update workflow follows the latest non-prerelease GitHub
 release automatically. Patch updates are committed directly to `main` seven

@@ -1,0 +1,41 @@
+# Maintainer: Igor Kulkov <arch.i@sonc.top>
+
+pkgname=nvidia-open-lts
+epoch=1
+_nvidia_version=610.57.04
+_kernel_pkgver=6.18.44-1
+_kernel_release=6.18.44-1-lts
+pkgver="${_nvidia_version}.${_kernel_pkgver//-/.}"
+pkgrel=1
+pkgdesc='NVIDIA open kernel modules prebuilt for linux-lts'
+arch=('x86_64')
+url='https://github.com/NVIDIA/open-gpu-kernel-modules'
+license=('MIT AND GPL-2.0-only')
+depends=(
+  "linux-lts=${_kernel_pkgver}"
+  "nvidia-utils=${_nvidia_version}"
+  'libglvnd'
+)
+makedepends=(
+  "linux-lts-headers=${_kernel_pkgver}"
+  "nvidia-open-dkms=${_nvidia_version}"
+)
+options=('!strip' '!debug')
+conflicts=('nvidia-lts')
+replaces=('nvidia-lts<=1:580.119.02-3')
+provides=('NVIDIA-MODULE')
+
+build() {
+  fakeroot dkms build --dkmstree "${srcdir}" \
+    -m "nvidia/${_nvidia_version}" -k "${_kernel_release}"
+}
+
+package() {
+  install -Dt "${pkgdir}/usr/lib/modules/${_kernel_release}/extramodules" \
+    -m644 "nvidia/${_nvidia_version}/${_kernel_release}/${CARCH}"/module/*.ko
+
+  find "${pkgdir}" -name '*.ko' -exec zstd --rm -19 {} +
+
+  install -Dm644 /usr/share/licenses/nvidia-open-dkms/LICENSE \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

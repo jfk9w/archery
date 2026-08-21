@@ -55,6 +55,44 @@ jobs:
           path: packages/amneziawg-linux-lts/*.pkg.tar.zst
           if-no-files-found: error
 
+  nvidia-open-lts:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+
+    steps:
+      - name: Install build environment
+        run: pacman -Syu --noconfirm --needed dkms kmod linux-lts linux-lts-headers nvidia-open-dkms nvidia-utils
+
+      - uses: actions/checkout@v4
+
+      - name: Select current NVIDIA driver and linux-lts
+        run: ./scripts/prepare-nvidia-open-lts packages/nvidia-open-lts/PKGBUILD
+
+      - name: Build package
+        run: |
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- bash -lc \
+            "cd '$GITHUB_WORKSPACE/packages/nvidia-open-lts' && makepkg --cleanbuild --noconfirm"
+
+      - name: Verify module metadata
+        run: |
+          package=$(find packages/nvidia-open-lts -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
+          mkdir /tmp/nvidia-open-package
+          bsdtar -xf "$package" -C /tmp/nvidia-open-package
+          module_dir=$(find /tmp/nvidia-open-package/usr/lib/modules -type d -name extramodules -print -quit)
+          kernel_release=$(basename "$(dirname "$module_dir")")
+          for name in nvidia nvidia-drm nvidia-modeset nvidia-peermem nvidia-uvm; do
+            zstd -dc "$module_dir/$name.ko.zst" > "/tmp/$name.ko"
+            modinfo -F vermagic "/tmp/$name.ko" | grep -F "${kernel_release} "
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nvidia-open-lts
+          path: packages/nvidia-open-lts/*.pkg.tar.zst
+          if-no-files-found: error
+
   caddy:
     runs-on: ubuntu-latest
     container: archlinux:base-devel
@@ -87,7 +125,7 @@ jobs:
           if-no-files-found: error
 
   repository:
-    needs: [amneziawg-linux-lts, caddy]
+    needs: [amneziawg-linux-lts, nvidia-open-lts, caddy]
     runs-on: ubuntu-latest
     container: archlinux:base-devel
 
