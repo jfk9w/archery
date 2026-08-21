@@ -21,18 +21,18 @@ userspace commands and configuration helpers.
 Its version has the form `<module-version>.<kernel-package-version>-1`, for
 example `1.0.20260329.6.18.44.1-1`.
 
-### `nvidia-open-lts`
+### `nvidia-open-lts-meta`
 
-NVIDIA's open kernel modules prebuilt for the exact `linux-lts` version used by
-the build, following the official Arch package's DKMS-based build and module
-layout. The package depends on that exact `linux-lts` version and the matching
-`nvidia-utils` release, provides `NVIDIA-MODULE`, and conflicts with the legacy
-proprietary `nvidia-lts` package.
+Version guard for Arch Linux's official `nvidia-open-lts` package. Before
+updating its pins, the workflow downloads the signed official package and
+checks that its `nvidia.ko.zst` is installed below the module directory of the
+current `linux-lts` release. The meta-package then depends on the exact versions
+of both `linux-lts` and `nvidia-open-lts`.
 
-Unlike the official package, its version explicitly includes the kernel package
-version: `<driver-version>.<kernel-package-version>-1`, for example
-`1:610.57.04.6.18.44.1-1`. Thus a new `linux-lts` release is always a package
-upgrade even when the NVIDIA driver version is unchanged.
+Its version explicitly includes the driver and kernel package versions, for
+example `610.57.04.6.18.45.1-1`. If the official NVIDIA package temporarily
+targets a different kernel, the existing pins remain published and prevent a
+partial upgrade until Arch publishes a matching pair.
 
 ### `caddy`
 
@@ -78,23 +78,20 @@ cd packages/caddy
 makepkg --syncdeps --cleanbuild
 ```
 
-For NVIDIA open kernel modules, install the current `nvidia-open-dkms`,
-`nvidia-utils`, `linux-lts` and `linux-lts-headers`, then run:
+For the NVIDIA version guard, refresh the official databases, then run:
 
 ```bash
-./scripts/prepare-nvidia-open-lts packages/nvidia-open-lts/PKGBUILD
-cd packages/nvidia-open-lts
-makepkg --syncdeps --cleanbuild
+./scripts/prepare-nvidia-open-lts-meta packages/nvidia-open-lts-meta/PKGBUILD
+cd packages/nvidia-open-lts-meta
+makepkg --nodeps --cleanbuild
 ```
 
 `prepare-linux-lts` pins both the pacman package version and the kernel release.
 Consequently, pacman will refuse to upgrade `linux-lts` until a matching module
 package is available.
 
-`prepare-nvidia-open-lts` additionally selects the installed
-`nvidia-open-dkms` version. The scheduled build therefore follows both official
-Arch packages while retaining an explicit kernel version in the resulting
-package version and dependency.
+`prepare-nvidia-open-lts-meta` verifies the module directory in Arch's signed
+binary package before changing either exact dependency.
 
 The scheduled Caddy update workflow follows the latest non-prerelease GitHub
 release automatically. Patch updates are committed directly to `main` seven
@@ -157,7 +154,7 @@ Refresh the databases and install the package in the same transaction, so the
 kernel and its module cannot get out of sync:
 
 ```bash
-sudo pacman -Syu amneziawg-linux-lts
+sudo pacman -Syu amneziawg-linux-lts nvidia-open-lts-meta
 ```
 
 Kernel-module tags are not automatically followed: their version number does

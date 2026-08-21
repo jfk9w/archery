@@ -1,0 +1,24 @@
+# Maintainer: Igor Kulkov <arch.i@sonc.top>
+
+pkgname=nvidia-open-lts-meta
+_nvidia_version=610.57.04
+_nvidia_pkgver=1:610.57.04-6
+_kernel_pkgver=6.18.45-1
+_kernel_release=6.18.45-1-lts
+pkgver="${_nvidia_version}.${_kernel_pkgver//-/.}"
+pkgrel=1
+pkgdesc='Version guard for the official nvidia-open-lts and linux-lts packages'
+arch=('x86_64')
+url='https://archlinux.org/packages/extra/x86_64/nvidia-open-lts/'
+license=('MIT')
+depends=(
+  "linux-lts=${_kernel_pkgver}"
+  "nvidia-open-lts=${_nvidia_pkgver}"
+)
+
+package() {
+  install -d "${pkgdir}/usr/share/doc/${pkgname}"
+  printf '%s\n' \
+    "Guards nvidia-open-lts ${_nvidia_pkgver} for linux-lts ${_kernel_pkgver} (${_kernel_release})." \
+    >"${pkgdir}/usr/share/doc/${pkgname}/README"
+}

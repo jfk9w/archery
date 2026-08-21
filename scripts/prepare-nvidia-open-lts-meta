@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pkgbuild=${1:-packages/nvidia-open-lts-meta/PKGBUILD}
+temporary_directory=$(mktemp -d)
+trap 'rm -rf "${temporary_directory}"' EXIT
+chmod 755 "${temporary_directory}"
+
+nvidia_pkgver=$(pacman -Si nvidia-open-lts | \
+  awk -F ': ' '$1 ~ /^Version/ { print $2; exit }')
+kernel_pkgver=$(pacman -Si linux-lts | \
+  awk -F ': ' '$1 ~ /^Version/ { print $2; exit }')
+kernel_release="${kernel_pkgver}-lts"
+nvidia_version=${nvidia_pkgver#*:}
+nvidia_version=${nvidia_version%-*}
+
+pacman -Sddw --noconfirm --cachedir "${temporary_directory}" nvidia-open-lts
+nvidia_package=$(find "${temporary_directory}" -maxdepth 1 \
+  -name 'nvidia-open-lts-*.pkg.tar.zst' -print -quit)
+
+if [[ -z ${nvidia_pkgver} || -z ${kernel_pkgver} || -z ${nvidia_package} ]]; then
+  echo 'Could not select the official nvidia-open-lts and linux-lts packages' >&2
+  exit 1
+fi
+
+packaged_kernel_release=$(bsdtar -tf "${nvidia_package}" | sed -n \
+  's|^usr/lib/modules/\([^/]*\)/extramodules/nvidia\.ko\.zst$|\1|p')
+
+if [[ ${packaged_kernel_release} != "${kernel_release}" ]]; then
+  printf 'Official nvidia-open-lts %s targets %s, not current linux-lts %s; keeping existing pins\n' \
+    "${nvidia_pkgver}" "${packaged_kernel_release:-an unknown kernel}" \
+    "${kernel_release}"
+  exit 0
+fi
+
+sed -i \
+  -e "s/^_nvidia_version=.*/_nvidia_version=${nvidia_version}/" \
+  -e "s/^_nvidia_pkgver=.*/_nvidia_pkgver=${nvidia_pkgver}/" \
+  -e "s/^_kernel_pkgver=.*/_kernel_pkgver=${kernel_pkgver}/" \
+  -e "s/^_kernel_release=.*/_kernel_release=${kernel_release}/" \
+  "${pkgbuild}"
+
+printf 'Guarding official nvidia-open-lts %s for linux-lts %s (%s)\n' \
+  "${nvidia_pkgver}" "${kernel_pkgver}" "${kernel_release}"

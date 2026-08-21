@@ -77,7 +77,7 @@ jobs:
           path: packages/amneziawg-linux-lts/*.pkg.tar.zst
           if-no-files-found: error
 
-  nvidia-open-lts:
+  nvidia-open-lts-meta:
     outputs:
       rebuilt: ${{ steps.result.outputs.rebuilt }}
     runs-on: ubuntu-latest
@@ -89,22 +89,18 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Select current NVIDIA driver and linux-lts
-        run: ./scripts/prepare-nvidia-open-lts packages/nvidia-open-lts/PKGBUILD
+      - name: Select matching official NVIDIA driver and linux-lts
+        run: ./scripts/prepare-nvidia-open-lts-meta packages/nvidia-open-lts-meta/PKGBUILD
 
       - name: Reuse published package
         id: reuse
         if: github.event_name == 'schedule'
         run: |
-          if ./scripts/reuse-published-package packages/nvidia-open-lts; then
+          if ./scripts/reuse-published-package packages/nvidia-open-lts-meta; then
             echo 'reused=true' >> "$GITHUB_OUTPUT"
           else
             echo 'reused=false' >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Install build environment
-        if: steps.reuse.outputs.reused != 'true'
-        run: pacman -Su --noconfirm --needed dkms kmod linux-lts linux-lts-headers nvidia-open-dkms nvidia-utils
 
       - name: Build package
         if: steps.reuse.outputs.reused != 'true'
@@ -112,29 +108,22 @@ jobs:
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
           runuser -u builder -- bash -lc \
-            "cd '$GITHUB_WORKSPACE/packages/nvidia-open-lts' && makepkg --cleanbuild --noconfirm"
+            "cd '$GITHUB_WORKSPACE/packages/nvidia-open-lts-meta' && makepkg --nodeps --cleanbuild --noconfirm"
 
       - name: Record build result
         id: result
         run: echo "rebuilt=${{ steps.reuse.outputs.reused != 'true' }}" >> "$GITHUB_OUTPUT"
 
-      - name: Verify module metadata
+      - name: Verify pinned dependencies
         if: steps.reuse.outputs.reused != 'true'
         run: |
-          package=$(find packages/nvidia-open-lts -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
-          mkdir /tmp/nvidia-open-package
-          bsdtar -xf "$package" -C /tmp/nvidia-open-package
-          module_dir=$(find /tmp/nvidia-open-package/usr/lib/modules -type d -name extramodules -print -quit)
-          kernel_release=$(basename "$(dirname "$module_dir")")
-          for name in nvidia nvidia-drm nvidia-modeset nvidia-peermem nvidia-uvm; do
-            zstd -dc "$module_dir/$name.ko.zst" > "/tmp/$name.ko"
-            modinfo -F vermagic "/tmp/$name.ko" | grep -F "${kernel_release} "
-          done
+          package=$(find packages/nvidia-open-lts-meta -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
+          bsdtar -xOf "$package" .PKGINFO | grep -E '^depend = (linux-lts|nvidia-open-lts)='
 
       - uses: actions/upload-artifact@v4
         with:
-          name: nvidia-open-lts
-          path: packages/nvidia-open-lts/*.pkg.tar.zst
+          name: nvidia-open-lts-meta
+          path: packages/nvidia-open-lts-meta/*.pkg.tar.zst
           if-no-files-found: error
 
   caddy:
@@ -190,7 +179,7 @@ jobs:
           if-no-files-found: error
 
   repository:
-    needs: [amneziawg-linux-lts, nvidia-open-lts, caddy]
+    needs: [amneziawg-linux-lts, nvidia-open-lts-meta, caddy]
     runs-on: ubuntu-latest
     container: archlinux:base-devel
 
@@ -256,11 +245,11 @@ jobs:
         uses: actions/deploy-pages@v4
 
   notify:
-    needs: [amneziawg-linux-lts, nvidia-open-lts, caddy, deploy]
+    needs: [amneziawg-linux-lts, nvidia-open-lts-meta, caddy, deploy]
     if: >-
       vars.ENABLE_EMAIL_NOTIFICATIONS == 'true' &&
-      (needs.amneziawg-linux-lts.outputs.rebuilt == 'true' ||
-      needs.nvidia-open-lts.outputs.rebuilt == 'true' ||
+      (needs['amneziawg-linux-lts'].outputs.rebuilt == 'true' ||
+      needs['nvidia-open-lts-meta'].outputs.rebuilt == 'true' ||
       needs.caddy.outputs.rebuilt == 'true')
     runs-on: ubuntu-latest
     container: archlinux:base
@@ -279,8 +268,8 @@ jobs:
           SMTP_FROM: ${{ secrets.SMTP_FROM }}
           SMTP_TO: ${{ secrets.SMTP_TO }}
           ARCHERY_BUILT_PACKAGES: |-
-            amneziawg-linux-lts: ${{ needs.amneziawg-linux-lts.outputs.rebuilt }}
-            nvidia-open-lts: ${{ needs.nvidia-open-lts.outputs.rebuilt }}
+            amneziawg-linux-lts: ${{ needs['amneziawg-linux-lts'].outputs.rebuilt }}
+            nvidia-open-lts-meta: ${{ needs['nvidia-open-lts-meta'].outputs.rebuilt }}
             caddy: ${{ needs.caddy.outputs.rebuilt }}
           ARCHERY_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: ./scripts/send-build-email
