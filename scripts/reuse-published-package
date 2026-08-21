@@ -6,11 +6,14 @@ repository_url=${2:-https://jfk9w.github.io/archery}
 temporary_directory=$(mktemp -d)
 trap 'rm -rf "${temporary_directory}"' EXIT
 
-srcinfo=$(cd "${package_directory}" && makepkg --printsrcinfo)
-package_name=$(awk '$1 == "pkgname" { print $3; exit }' <<<"${srcinfo}")
-package_version=$(awk '$1 == "pkgver" { print $3; exit }' <<<"${srcinfo}")
-package_release=$(awk '$1 == "pkgrel" { print $3; exit }' <<<"${srcinfo}")
-epoch=$(awk '$1 == "epoch" { print $3; exit }' <<<"${srcinfo}")
+mapfile -t metadata < <(bash -c '
+  source "$1"
+  printf "%s\n%s\n%s\n%s\n" "$pkgname" "$pkgver" "$pkgrel" "${epoch:-}"
+' _ "${package_directory}/PKGBUILD")
+package_name=${metadata[0]}
+package_version=${metadata[1]}
+package_release=${metadata[2]}
+epoch=${metadata[3]}
 expected_version="${package_version}-${package_release}"
 if [[ -n ${epoch} ]]; then
   expected_version="${epoch}:${expected_version}"
