@@ -113,11 +113,11 @@ GitHub Pages. Before running it:
 The public key and its fingerprint are published as `archery.gpg` and
 `archery.fingerprint`.
 
-Scheduled builds reuse a package already present in the signed published
-database when its complete version is unchanged. Pushes and manual runs always
-build from source. Set the `SMTP_URL`, `SMTP_USERNAME`, `SMTP_PASSWORD`,
-`SMTP_FROM` and `SMTP_TO` Actions secrets to receive an email after a successful
-deployment that contains newly built packages, then set the
+Scheduled and push-triggered builds reuse a package already present in the
+signed published database when its complete version is unchanged. Manual
+workflow runs always rebuild every package. Set the `SMTP_URL`, `SMTP_USERNAME`,
+`SMTP_PASSWORD`, `SMTP_FROM` and `SMTP_TO` Actions secrets to receive an email
+after a successful deployment that contains newly built packages, then set the
 `ENABLE_EMAIL_NOTIFICATIONS` repository variable to `true`. Notifications are
 disabled when that variable is absent. `SMTP_URL` may use either
 `smtp://host:587` with STARTTLS or `smtps://host:465`.
