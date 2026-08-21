@@ -31,12 +31,12 @@ build() {
 }
 
 package() {
-  local dkms_tree="nvidia/${_nvidia_version}/${_kernel_release}"
+  local dkms_tree="nvidia/${_nvidia_version}"
   local destination="${pkgdir}/usr/lib/modules/${_kernel_release}/extramodules"
   local name module
 
   for name in nvidia nvidia-drm nvidia-modeset nvidia-peermem nvidia-uvm; do
-    module=$(find "${dkms_tree}" -type f -path "*/module/${name}.ko" -print -quit)
+    module=$(find -L "${dkms_tree}" -type f -name "${name}.ko" -print -quit)
     if [[ -z ${module} ]]; then
       printf 'DKMS did not produce %s.ko below %s\n' "${name}" "${dkms_tree}" >&2
       return 1

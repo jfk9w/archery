@@ -21,26 +21,48 @@ concurrency:
 
 jobs:
   amneziawg-linux-lts:
+    outputs:
+      rebuilt: ${{ steps.result.outputs.rebuilt }}
     runs-on: ubuntu-latest
     container: archlinux:base-devel
 
     steps:
-      - name: Install build environment
-        run: pacman -Syu --noconfirm --needed bc git kmod linux-lts linux-lts-headers
+      - name: Install package selection tools
+        run: pacman -Sy --noconfirm --needed curl gnupg
 
       - uses: actions/checkout@v4
 
       - name: Select current linux-lts
         run: ./scripts/prepare-linux-lts packages/amneziawg-linux-lts/PKGBUILD
 
+      - name: Reuse published package
+        id: reuse
+        if: github.event_name == 'schedule'
+        run: |
+          if ./scripts/reuse-published-package packages/amneziawg-linux-lts; then
+            echo 'reused=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'reused=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install build environment
+        if: steps.reuse.outputs.reused != 'true'
+        run: pacman -Su --noconfirm --needed bc git kmod linux-lts linux-lts-headers
+
       - name: Build package
+        if: steps.reuse.outputs.reused != 'true'
         run: |
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
           runuser -u builder -- bash -lc \
             "cd '$GITHUB_WORKSPACE/packages/amneziawg-linux-lts' && makepkg --cleanbuild --noconfirm"
 
+      - name: Record build result
+        id: result
+        run: echo "rebuilt=${{ steps.reuse.outputs.reused != 'true' }}" >> "$GITHUB_OUTPUT"
+
       - name: Verify module metadata
+        if: steps.reuse.outputs.reused != 'true'
         run: |
           package=$(find packages/amneziawg-linux-lts -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
           mkdir /tmp/package
@@ -56,26 +78,48 @@ jobs:
           if-no-files-found: error
 
   nvidia-open-lts:
+    outputs:
+      rebuilt: ${{ steps.result.outputs.rebuilt }}
     runs-on: ubuntu-latest
     container: archlinux:base-devel
 
     steps:
-      - name: Install build environment
-        run: pacman -Syu --noconfirm --needed dkms kmod linux-lts linux-lts-headers nvidia-open-dkms nvidia-utils
+      - name: Install package selection tools
+        run: pacman -Sy --noconfirm --needed curl gnupg
 
       - uses: actions/checkout@v4
 
       - name: Select current NVIDIA driver and linux-lts
         run: ./scripts/prepare-nvidia-open-lts packages/nvidia-open-lts/PKGBUILD
 
+      - name: Reuse published package
+        id: reuse
+        if: github.event_name == 'schedule'
+        run: |
+          if ./scripts/reuse-published-package packages/nvidia-open-lts; then
+            echo 'reused=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'reused=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install build environment
+        if: steps.reuse.outputs.reused != 'true'
+        run: pacman -Su --noconfirm --needed dkms kmod linux-lts linux-lts-headers nvidia-open-dkms nvidia-utils
+
       - name: Build package
+        if: steps.reuse.outputs.reused != 'true'
         run: |
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
           runuser -u builder -- bash -lc \
             "cd '$GITHUB_WORKSPACE/packages/nvidia-open-lts' && makepkg --cleanbuild --noconfirm"
 
+      - name: Record build result
+        id: result
+        run: echo "rebuilt=${{ steps.reuse.outputs.reused != 'true' }}" >> "$GITHUB_OUTPUT"
+
       - name: Verify module metadata
+        if: steps.reuse.outputs.reused != 'true'
         run: |
           package=$(find packages/nvidia-open-lts -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
           mkdir /tmp/nvidia-open-package
@@ -94,12 +138,14 @@ jobs:
           if-no-files-found: error
 
   caddy:
+    outputs:
+      rebuilt: ${{ steps.result.outputs.rebuilt }}
     runs-on: ubuntu-latest
     container: archlinux:base-devel
 
     steps:
-      - name: Install build environment
-        run: pacman -Syu --noconfirm --needed git go mailcap
+      - name: Install package selection tools
+        run: pacman -Sy --noconfirm --needed curl git gnupg
 
       - uses: actions/checkout@v4
         with:
@@ -111,12 +157,31 @@ jobs:
       - name: Select package timestamp
         run: ./scripts/prepare-caddy packages/caddy/PKGBUILD
 
+      - name: Reuse published package
+        id: reuse
+        if: github.event_name == 'schedule'
+        run: |
+          if ./scripts/reuse-published-package packages/caddy; then
+            echo 'reused=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'reused=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install build environment
+        if: steps.reuse.outputs.reused != 'true'
+        run: pacman -Su --noconfirm --needed go mailcap
+
       - name: Build package
+        if: steps.reuse.outputs.reused != 'true'
         run: |
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
           runuser -u builder -- bash -lc \
             "cd '$GITHUB_WORKSPACE/packages/caddy' && makepkg --cleanbuild --noconfirm"
+
+      - name: Record build result
+        id: result
+        run: echo "rebuilt=${{ steps.reuse.outputs.reused != 'true' }}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -189,3 +254,33 @@ jobs:
       - name: Deploy repository to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  notify:
+    needs: [amneziawg-linux-lts, nvidia-open-lts, caddy, deploy]
+    if: >-
+      vars.ENABLE_EMAIL_NOTIFICATIONS == 'true' &&
+      (needs.amneziawg-linux-lts.outputs.rebuilt == 'true' ||
+      needs.nvidia-open-lts.outputs.rebuilt == 'true' ||
+      needs.caddy.outputs.rebuilt == 'true')
+    runs-on: ubuntu-latest
+    container: archlinux:base
+
+    steps:
+      - name: Install mail client
+        run: pacman -Syu --noconfirm --needed curl
+
+      - uses: actions/checkout@v4
+
+      - name: Send publication email
+        env:
+          SMTP_URL: ${{ secrets.SMTP_URL }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          ARCHERY_BUILT_PACKAGES: |-
+            amneziawg-linux-lts: ${{ needs.amneziawg-linux-lts.outputs.rebuilt }}
+            nvidia-open-lts: ${{ needs.nvidia-open-lts.outputs.rebuilt }}
+            caddy: ${{ needs.caddy.outputs.rebuilt }}
+          ARCHERY_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: ./scripts/send-build-email
