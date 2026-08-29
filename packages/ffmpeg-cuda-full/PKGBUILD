@@ -46,7 +46,7 @@ provides=(
   'libavutil.so' 'libswresample.so' 'libswscale.so'
 )
 conflicts=('ffmpeg')
-options=('!lto')
+options=('!lto' '!debug')
 source=(
   "https://ffmpeg.org/releases/ffmpeg-${_ffmpeg_version}.tar.xz"
   '0001-Add-av_stream_get_first_dts-for-Chromium.patch'

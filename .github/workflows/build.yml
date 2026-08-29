@@ -232,7 +232,14 @@ jobs:
       - name: Verify packaged CUDA support
         if: steps.reuse.outputs.reused != 'true'
         run: |
-          package=$(find packages/ffmpeg-cuda-full -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
+          package=''
+          while IFS= read -r candidate; do
+            if bsdtar -xOf "$candidate" .PKGINFO | grep -Fxq 'pkgname = ffmpeg-cuda-full'; then
+              package=$candidate
+              break
+            fi
+          done < <(find packages/ffmpeg-cuda-full -maxdepth 1 -name '*.pkg.tar.zst' -print)
+          test -n "$package"
           mkdir /tmp/ffmpeg-cuda-full-package
           bsdtar -xf "$package" -C /tmp/ffmpeg-cuda-full-package
           LD_LIBRARY_PATH=/tmp/ffmpeg-cuda-full-package/usr/lib \
