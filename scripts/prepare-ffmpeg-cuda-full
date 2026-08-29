@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pkgbuild=${1:-packages/ffmpeg-cuda-full/PKGBUILD}
+if pacman -Q cuda &>/dev/null; then
+  cuda_pkgver=$(pacman -Q cuda | awk '{ print $2 }')
+else
+  cuda_pkgver=$(pacman -Si cuda | \
+    awk -F ': ' '$1 ~ /^Version/ { print $2; exit }')
+fi
+
+if [[ -z ${cuda_pkgver} ]]; then
+  echo 'Could not select the cuda package version' >&2
+  exit 1
+fi
+
+sed -i "s/^_cuda_pkgver=.*/_cuda_pkgver=${cuda_pkgver}/" "${pkgbuild}"
+printf 'Building FFmpeg with CUDA %s\n' "${cuda_pkgver}"

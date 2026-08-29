@@ -44,6 +44,14 @@ with unattended GitHub Actions builds.
   Caddyfile and version-matched welcome page aligned with the official Arch
   package unless the custom build requires a documented divergence.
 
+### FFmpeg CUDA
+
+- Keep the pinned CUDA package version and the CUDA component of the
+  `ffmpeg-cuda-full` package version in sync.
+- Preserve portable Arch x86_64 compiler flags; do not copy the AUR recipe's
+  host-specific `-march=native` optimization into published binaries.
+- Pin FFmpeg release archives and local compatibility patches with SHA-256.
+
 ## Publishing
 
 - `build.yml` builds all packages, signs packages and repository databases, and

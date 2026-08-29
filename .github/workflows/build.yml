@@ -178,8 +178,77 @@ jobs:
           path: packages/caddy/*.pkg.tar.zst
           if-no-files-found: error
 
+  ffmpeg-cuda-full:
+    outputs:
+      rebuilt: ${{ steps.result.outputs.rebuilt }}
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+
+    steps:
+      - name: Install package selection tools
+        run: pacman -Sy --noconfirm --needed curl gnupg
+
+      - uses: actions/checkout@v4
+
+      - name: Select current CUDA
+        run: ./scripts/prepare-ffmpeg-cuda-full packages/ffmpeg-cuda-full/PKGBUILD
+
+      - name: Reuse published package
+        id: reuse
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          if ./scripts/reuse-published-package packages/ffmpeg-cuda-full; then
+            echo 'reused=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'reused=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install build environment
+        if: steps.reuse.outputs.reused != 'true'
+        run: |
+          mapfile -t package_dependencies < <(bash -c '
+            source "$1"
+            for dependency in "${depends[@]}" "${makedepends[@]}"; do
+              case "$dependency" in
+                jack|libgl) continue ;;
+              esac
+              printf "%s\n" "$dependency"
+            done
+          ' _ packages/ffmpeg-cuda-full/PKGBUILD)
+          pacman -Su --noconfirm --needed jack2 libglvnd "${package_dependencies[@]}"
+
+      - name: Build package
+        if: steps.reuse.outputs.reused != 'true'
+        run: |
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- bash -lc \
+            "cd '$GITHUB_WORKSPACE/packages/ffmpeg-cuda-full' && makepkg --cleanbuild --noconfirm"
+
+      - name: Record build result
+        id: result
+        run: echo "rebuilt=${{ steps.reuse.outputs.reused != 'true' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify packaged CUDA support
+        if: steps.reuse.outputs.reused != 'true'
+        run: |
+          package=$(find packages/ffmpeg-cuda-full -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
+          mkdir /tmp/ffmpeg-cuda-full-package
+          bsdtar -xf "$package" -C /tmp/ffmpeg-cuda-full-package
+          LD_LIBRARY_PATH=/tmp/ffmpeg-cuda-full-package/usr/lib \
+            /tmp/ffmpeg-cuda-full-package/usr/bin/ffmpeg -hide_banner -hwaccels | grep -Fx cuda
+          LD_LIBRARY_PATH=/tmp/ffmpeg-cuda-full-package/usr/lib \
+            /tmp/ffmpeg-cuda-full-package/usr/bin/ffmpeg -hide_banner -buildconf | \
+            grep -F -- '--enable-libfdk-aac'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-cuda-full
+          path: packages/ffmpeg-cuda-full/*.pkg.tar.zst
+          if-no-files-found: error
+
   repository:
-    needs: [amneziawg-linux-lts, nvidia-open-lts-meta, caddy]
+    needs: [amneziawg-linux-lts, nvidia-open-lts-meta, caddy, ffmpeg-cuda-full]
     runs-on: ubuntu-latest
     container: archlinux:base-devel
 
@@ -245,12 +314,13 @@ jobs:
         uses: actions/deploy-pages@v4
 
   notify:
-    needs: [amneziawg-linux-lts, nvidia-open-lts-meta, caddy, deploy]
+    needs: [amneziawg-linux-lts, nvidia-open-lts-meta, caddy, ffmpeg-cuda-full, deploy]
     if: >-
       vars.ENABLE_EMAIL_NOTIFICATIONS == 'true' &&
       (needs['amneziawg-linux-lts'].outputs.rebuilt == 'true' ||
       needs['nvidia-open-lts-meta'].outputs.rebuilt == 'true' ||
-      needs.caddy.outputs.rebuilt == 'true')
+      needs.caddy.outputs.rebuilt == 'true' ||
+      needs['ffmpeg-cuda-full'].outputs.rebuilt == 'true')
     runs-on: ubuntu-latest
     container: archlinux:base
 
@@ -271,5 +341,6 @@ jobs:
             amneziawg-linux-lts: ${{ needs['amneziawg-linux-lts'].outputs.rebuilt }}
             nvidia-open-lts-meta: ${{ needs['nvidia-open-lts-meta'].outputs.rebuilt }}
             caddy: ${{ needs.caddy.outputs.rebuilt }}
+            ffmpeg-cuda-full: ${{ needs['ffmpeg-cuda-full'].outputs.rebuilt }}
           ARCHERY_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: ./scripts/send-build-email

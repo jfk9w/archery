@@ -1,0 +1,195 @@
+# Maintainer: Igor Kulkov <arch.i@sonc.top>
+
+pkgname=ffmpeg-cuda-full
+epoch=2
+_ffmpeg_version=9.0.1
+_cuda_pkgver=13.3.1-1
+_cuda_version=${_cuda_pkgver//-/.}
+_cuda_version=${_cuda_version//:/.}
+pkgver="${_ffmpeg_version}.${_cuda_version}"
+pkgrel=1
+pkgdesc='FFmpeg with CUDA/NVENC and all codecs including nonfree libfdk-aac'
+arch=('x86_64')
+url='https://ffmpeg.org/'
+license=('GPL-3.0-only' 'LicenseRef-FFmpeg-nonfree')
+depends=(
+  'alsa-lib' 'aom' 'aribb24' 'bzip2' 'cairo' 'dav1d' 'fontconfig'
+  'freetype2' 'fribidi' 'glib2' 'glibc' 'gmp' 'gnutls' 'gsm' 'harfbuzz'
+  'jack' 'kvazaar' 'lame' 'lcms2' 'libass' 'libavc1394' 'libbluray'
+  'libbs2b' 'libcdio-paranoia' 'libdrm' 'libfdk-aac' 'libgcc' 'libgl'
+  'libiec61883' 'libjxl' 'libmodplug' 'libmysofa' 'libopenmpt' 'libplacebo'
+  'libpulse' 'libraw1394' 'librist' 'librsvg' 'libsoxr' 'libssh'
+  'libtheora' 'libva' 'libvdpau' 'libvorbis' 'libvpx' 'libwebp' 'libx11'
+  'libxcb' 'libxext' 'libxml2' 'libxv' 'lilv' 'nvidia-utils' 'ocl-icd'
+  'onevpl' 'opencore-amr' 'openjpeg2' 'opus' 'rav1e' 'rubberband' 'sdl2'
+  'smbclient' 'snappy' 'sndio' 'speex' 'srt' 'svt-av1' 'v4l-utils'
+  'vapoursynth' 'vid.stab' 'vmaf' 'vulkan-icd-loader' 'x264' 'x265'
+  'xvidcore' 'xz' 'zeromq' 'zimg' 'zlib'
+)
+makedepends=(
+  'amf-headers' 'avisynthplus' 'clang' "cuda=${_cuda_pkgver}"
+  'ffnvcodec-headers' 'ladspa' 'mesa' 'nasm' 'opencl-headers' 'perl'
+  'python' 'spirv-headers' 'vulkan-headers'
+)
+optdepends=(
+  'frei0r-plugins: Frei0r video effects support'
+  'intel-media-driver: VAAPI driver for Intel Broadwell and newer GPUs'
+  'intel-media-sdk: Intel QuickSync support (legacy)'
+  'ladspa: LADSPA filters'
+  'libva-utils: VAAPI diagnostics including vainfo'
+  'mesa: VAAPI driver for AMD/older Intel GPUs'
+  'onevpl-intel-gpu: Intel QuickSync support'
+)
+provides=(
+  "ffmpeg=${epoch}:${_ffmpeg_version}"
+  'libavcodec.so' 'libavdevice.so' 'libavfilter.so' 'libavformat.so'
+  'libavutil.so' 'libswresample.so' 'libswscale.so'
+)
+conflicts=('ffmpeg')
+options=('!lto')
+source=(
+  "https://ffmpeg.org/releases/ffmpeg-${_ffmpeg_version}.tar.xz"
+  '0001-Add-av_stream_get_first_dts-for-Chromium.patch'
+)
+sha256sums=(
+  'cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635'
+  'f865d677f8ad39c79dde69186629cb6468c2b289c4156dbb8dec8e68b0131b40'
+)
+
+prepare() {
+  cd "ffmpeg-${_ffmpeg_version}"
+  patch -Np1 -i ../0001-Add-av_stream_get_first_dts-for-Chromium.patch
+}
+
+build() {
+  cd "ffmpeg-${_ffmpeg_version}"
+  unset threads THREADS
+  export PATH="/opt/cuda/bin:${PATH}"
+
+  local nvcc_arch
+  nvcc_arch=$(nvcc --list-gpu-arch 2>/dev/null | head -n1)
+  : "${nvcc_arch:=compute_75}"
+  local nvcc_sm=${nvcc_arch/compute_/sm_}
+
+  ./configure \
+    --prefix=/usr \
+    --disable-debug \
+    --disable-static \
+    --disable-stripping \
+    --enable-pic \
+    --enable-amf \
+    --enable-avisynth \
+    --enable-bzlib \
+    --enable-cuda-nvcc \
+    --enable-cuda-llvm \
+    --enable-cuvid \
+    --enable-ffnvcodec \
+    --enable-gmp \
+    --enable-gnutls \
+    --enable-gpl \
+    --enable-iconv \
+    --enable-ladspa \
+    --enable-lcms2 \
+    --enable-libaom \
+    --enable-libaribb24 \
+    --enable-libass \
+    --enable-libbluray \
+    --enable-libbs2b \
+    --enable-libcdio \
+    --enable-libdav1d \
+    --enable-libdrm \
+    --enable-libfdk-aac \
+    --enable-libfontconfig \
+    --enable-libfreetype \
+    --enable-libfribidi \
+    --enable-libgsm \
+    --enable-libharfbuzz \
+    --enable-libiec61883 \
+    --enable-libjack \
+    --enable-libjxl \
+    --enable-libkvazaar \
+    --enable-libmodplug \
+    --enable-libmp3lame \
+    --enable-libmysofa \
+    --enable-libopencore-amrnb \
+    --enable-libopencore-amrwb \
+    --enable-libopenmpt \
+    --enable-libopenjpeg \
+    --enable-libopus \
+    --enable-libplacebo \
+    --enable-libpulse \
+    --enable-librav1e \
+    --enable-librist \
+    --enable-librsvg \
+    --enable-librubberband \
+    --enable-libsmbclient \
+    --enable-libsnappy \
+    --enable-libsoxr \
+    --enable-libspeex \
+    --enable-libsrt \
+    --enable-libssh \
+    --enable-libsvtav1 \
+    --enable-libtheora \
+    --enable-libv4l2 \
+    --enable-libvidstab \
+    --enable-libvmaf \
+    --enable-libvpl \
+    --enable-libvorbis \
+    --enable-libvpx \
+    --enable-libwebp \
+    --enable-libx264 \
+    --enable-libx265 \
+    --enable-libxcb \
+    --enable-libxml2 \
+    --enable-libxvid \
+    --enable-libzimg \
+    --enable-libzmq \
+    --enable-lv2 \
+    --enable-lzma \
+    --enable-nonfree \
+    --enable-nvdec \
+    --enable-nvenc \
+    --enable-opencl \
+    --enable-opengl \
+    --enable-pthreads \
+    --enable-sdl2 \
+    --enable-shared \
+    --enable-vaapi \
+    --enable-vapoursynth \
+    --enable-version3 \
+    --enable-vulkan \
+    --enable-zlib \
+    --nvccflags="-gencode arch=${nvcc_arch},code=${nvcc_sm} -O2" \
+    --extra-cflags='-I/opt/cuda/include' \
+    --extra-ldflags='-L/opt/cuda/lib64'
+
+  make
+  make tools/qt-faststart
+  PATH="/usr/bin/core_perl:${PATH}" make doc/ff{mpeg,play,probe}.1
+}
+
+check() {
+  cd "ffmpeg-${_ffmpeg_version}"
+
+  local component
+  for component in avcodec avdevice avfilter avformat avutil swresample swscale; do
+    readelf -d "lib${component}/lib${component}.so" | grep -q '(SONAME)'
+  done
+
+  local library_path
+  library_path=$(printf '%s:' "$PWD"/lib{avcodec,avdevice,avfilter,avformat,avutil,swresample,swscale})
+  nm -D libavformat/libavformat.so | grep -Eq '[[:space:]]av_stream_get_first_dts(@@[^[:space:]]+)?$'
+  LD_LIBRARY_PATH="${library_path%:}" ./ffmpeg -hide_banner -hwaccels | grep -Fxq cuda
+  LD_LIBRARY_PATH="${library_path%:}" ./ffmpeg -hide_banner -encoders | grep -Eq '^[[:space:]]*V[^[:space:]]*[[:space:]]+av1_nvenc[[:space:]]'
+  LD_LIBRARY_PATH="${library_path%:}" ./ffmpeg -hide_banner -encoders | grep -Eq '^[[:space:]]*V[^[:space:]]*[[:space:]]+h264_nvenc[[:space:]]'
+  LD_LIBRARY_PATH="${library_path%:}" ./ffmpeg -hide_banner -encoders | grep -Eq '^[[:space:]]*V[^[:space:]]*[[:space:]]+hevc_nvenc[[:space:]]'
+  LD_LIBRARY_PATH="${library_path%:}" ./ffmpeg -hide_banner -filters | grep -Eq '^[[:space:]]+[.A-Z|]+[[:space:]]+lv2[[:space:]]'
+  LD_LIBRARY_PATH="${library_path%:}" ./ffmpeg -hide_banner -buildconf | grep -Fq -- '--enable-libfdk-aac'
+}
+
+package() {
+  cd "ffmpeg-${_ffmpeg_version}"
+  make DESTDIR="${pkgdir}" install
+  install -Dm755 tools/qt-faststart "${pkgdir}/usr/bin/qt-faststart"
+  install -Dm644 LICENSE.md "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.md"
+}

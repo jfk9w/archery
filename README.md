@@ -34,6 +34,19 @@ example `610.57.04.6.18.45.1-1`. If the official NVIDIA package temporarily
 targets a different kernel, the existing pins remain published and prevent a
 partial upgrade until Arch publishes a matching pair.
 
+### `ffmpeg-cuda-full`
+
+A binary build based on the AUR `ffmpeg-cuda-full` recipe, with CUDA/NVENC,
+nonfree `libfdk-aac`, and the complete codec and hardware-acceleration set from
+that recipe. It provides and conflicts with `ffmpeg`, so packages depending on
+the regular FFmpeg package can use it as a replacement.
+
+The build keeps Arch's portable x86_64 compiler flags instead of the AUR
+recipe's host-specific `-march=native`. Its version records both upstream
+FFmpeg and the complete CUDA package version, for example
+`2:9.0.1.13.3.1.1-1` for FFmpeg 9.0.1 and CUDA 13.3.1-1. The exact CUDA version
+is also a build dependency.
+
 ### `caddy`
 
 A custom, statically linked Caddy binary built with `xcaddy`. It includes:
@@ -84,6 +97,14 @@ For the NVIDIA version guard, refresh the official databases, then run:
 ./scripts/prepare-nvidia-open-lts-meta packages/nvidia-open-lts-meta/PKGBUILD
 cd packages/nvidia-open-lts-meta
 makepkg --nodeps --cleanbuild
+```
+
+For FFmpeg with CUDA, install its runtime and build dependencies, then run:
+
+```bash
+./scripts/prepare-ffmpeg-cuda-full packages/ffmpeg-cuda-full/PKGBUILD
+cd packages/ffmpeg-cuda-full
+makepkg --syncdeps --cleanbuild
 ```
 
 `prepare-linux-lts` pins both the pacman package version and the kernel release.
