@@ -229,6 +229,13 @@ jobs:
         id: result
         run: echo "rebuilt=${{ steps.reuse.outputs.reused != 'true' }}" >> "$GITHUB_OUTPUT"
 
+      - name: Normalize package filename
+        if: steps.reuse.outputs.reused != 'true'
+        run: |
+          package=$(find packages/ffmpeg-cuda-full -maxdepth 1 -name '*:*.pkg.tar.zst' -print -quit)
+          test -n "$package"
+          mv "$package" "${package//:/_}"
+
       - name: Verify packaged CUDA support
         if: steps.reuse.outputs.reused != 'true'
         run: |
