@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Install package selection tools
-        run: pacman -Sy --noconfirm --needed curl gnupg
+        run: pacman -Syu --noconfirm --needed curl gnupg
 
       - uses: actions/checkout@v4
 
@@ -85,7 +85,7 @@ jobs:
 
     steps:
       - name: Install package selection tools
-        run: pacman -Sy --noconfirm --needed curl gnupg
+        run: pacman -Syu --noconfirm --needed curl gnupg
 
       - uses: actions/checkout@v4
 
@@ -134,7 +134,7 @@ jobs:
 
     steps:
       - name: Install package selection tools
-        run: pacman -Sy --noconfirm --needed curl git gnupg
+        run: pacman -Syu --noconfirm --needed curl git gnupg
 
       - uses: actions/checkout@v4
         with:
@@ -186,7 +186,7 @@ jobs:
 
     steps:
       - name: Install package selection tools
-        run: pacman -Sy --noconfirm --needed curl gnupg
+        run: pacman -Syu --noconfirm --needed curl gnupg
 
       - uses: actions/checkout@v4
 
